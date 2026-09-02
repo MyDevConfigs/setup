@@ -244,7 +244,12 @@ main::summary() {
         printf '\n' >&2
         log::info "Re-run just the failures with: ./setup.sh --only $(
             IFS=,; printf '%s' "${failed[*]}")"
-        return 1
+
+        # Record the failure for main() to turn into an exit status, rather
+        # than returning non-zero from here. With errtrace on, a bare
+        # `return 1` fires the ERR trap and prints a spurious "Failed at
+        # line N" for what is a deliberate, already-reported outcome.
+        FAILED_COUNT=$fail
     fi
 
     if util::is_dry; then
@@ -261,6 +266,9 @@ main::summary() {
 declare -a ONLY=()
 declare -a SKIP=()
 LIST_ONLY=0
+
+# Set by main::summary, turned into the process exit status by main().
+declare -i FAILED_COUNT=0
 
 main::parse_args() {
     while (($# > 0)); do
@@ -312,6 +320,9 @@ main() {
     util::is_dry || util::sudo_init
 
     main::run_modules
+
+    # Exit non-zero if any module failed, so CI and `&&` chains see it.
+    ((FAILED_COUNT == 0)) || exit 1
 }
 
 main "$@"
