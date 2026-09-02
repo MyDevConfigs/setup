@@ -52,7 +52,9 @@ latest release of a tool. `NO_COLOR` disables colored output.
 | `core` | git, curl, wget, build-essential, clang, cmake, pkg-config, perl, unzip, fzf, stow, shellcheck |
 | `buildlibs` | sassc, libdrm-dev, libgtk-3-dev, libgdm-dev — headers for building Wayland/GTK tools from source |
 | `langs` | Go (apt), Rust (rustup) |
+| `gh` | GitHub CLI, from GitHub's own apt repository |
 | `apps` | timeshift |
+| `gitconfig` | Global git identity, default branch and pull strategy |
 
 `shell` is marked required: it runs on every invocation and `--skip shell`
 will not exclude it. Every other module writes its `PATH` and environment
@@ -108,7 +110,11 @@ has been tested. Choosing it fails with a message pointing at the guard.
 ### What it does
 
 `shell` sets your chosen shell as the login shell via `chsh`. **This takes
-effect at your next login**, not immediately.
+effect at your next login**, not immediately. It also creates `~/.local/bin`
+and puts it on `PATH` — the conventional place for user-installed binaries,
+which later modules drop things into. Ubuntu's stock `~/.profile` adds that
+directory only if it already exists at login, and nothing adds it for zsh at
+all.
 
 Modules that need to extend `PATH` or source an env file go through
 `lib/shell.sh`, which writes to whichever rc file your shell uses —
@@ -150,7 +156,9 @@ modules/
   10-core.sh          base tools and compilers
   20-buildlibs.sh     -dev headers
   30-langs.sh         Go, Rust
+  40-gh.sh            GitHub CLI (third-party apt repo)
   50-apps.sh          desktop applications
+  60-gitconfig.sh     git global settings (prompts, runs last)
 ```
 
 Modules run in their own process, so a failure is contained and no module
@@ -177,7 +185,7 @@ pkg::install ripgrep bat jq
 `--list` picks it up automatically. Add `# module-required: true` to make it
 run even when `--only` or `--skip` would exclude it.
 
-Two rules worth knowing:
+Rules worth knowing:
 
 - **Use generic package names.** `pkg::install fd` resolves to `fd-find` on
   Debian and `fd` on Arch via the lookup tables in `lib/pkg.sh`. Where a
@@ -188,6 +196,23 @@ Two rules worth knowing:
   `util::ensure_command` for anything with its own installer (rustup, nvm, a
   release tarball). `pkg::is_installed cargo` reports missing on a machine
   that has cargo through rustup.
+- **Third-party apt repositories go through `pkg::add_apt_repo`.** It writes
+  a `signed-by` keyring and sources file, idempotently, and refreshes the
+  index afterwards. See `modules/40-gh.sh`.
+- **Skip expensive work, not just the write.** `shell::add_path` and friends
+  already skip a line that is present. The `shell::has_*` predicates let you
+  skip the work that *produces* it:
+
+  ```bash
+  if ! shell::has_source "$HOME/.nvm/nvm.sh"; then
+      install_nvm                              # the expensive part
+      shell::source_file "$HOME/.nvm/nvm.sh"
+  fi
+  ```
+
+- **Never `| head -n1`.** Use `util::first_line cmd args`. Under `pipefail`,
+  `head` exiting early kills the producer with SIGPIPE and fails the
+  pipeline — intermittently, which is the worst kind of bug.
 
 ---
 

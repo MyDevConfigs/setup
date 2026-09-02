@@ -88,6 +88,21 @@ shell::add_line  '<raw posix line>'
 shell::add_block 'nvm' "$content"     # multi-line, fenced with markers
 ```
 
+Matching predicates exist for all of them — `shell::has_path`,
+`has_env`, `has_source`, `has_line`, `has_block`. The writers already skip a
+line that is present, so these are not needed to avoid a duplicate append.
+Use them to skip the *work that produces* the line when that work is
+expensive — downloading an installer, cloning a plugin repo:
+
+```bash
+if ! shell::has_source "$HOME/.nvm/nvm.sh"; then
+    install_nvm
+    shell::source_file "$HOME/.nvm/nvm.sh"
+fi
+```
+
+They are pure reads, so unlike the writers they carry no POSIX guard.
+
 Everything here is idempotent and honors `--dry-run`. It is centralized
 because rustup, nvm and pyenv all append their loader line *unconditionally*,
 so letting each do its own thing means a second run duplicates them.
@@ -195,8 +210,23 @@ Rules every module follows:
   honored in one place rather than forty.
 
 Group modules **by install mechanism, not by topic** — the mechanism is what
-determines the code. Plain apt packages, things with their own installers,
-and build-only headers are three different kinds of work.
+determines the code. Plain apt packages, third-party apt repositories
+(`pkg::add_apt_repo`, see `40-gh.sh`), things with their own installers, and
+build-only headers are all different kinds of work.
+
+### Configuration modules never overwrite
+
+`60-gitconfig.sh` is the pattern for anything that configures rather than
+installs: read the current value, and if it is set, **report it and move
+on**. Only fill in blanks. A module that stamps its own opinion over a
+setting the user tuned by hand is a module they will stop running.
+
+Where there is no safe default — a name, an email address — offer none and
+say what to run later. Guessing an identity and putting it on every future
+commit is worse than leaving it unset.
+
+Configuration modules run last, so their prompts land after the long package
+output rather than interleaved with it.
 
 ### Adding a distro
 
@@ -265,7 +295,8 @@ Do not reintroduce these. All three were live bugs here.
 **`curl | grep -m1` is a race.** `grep -m1` exits at the first match, curl
 takes SIGPIPE, and `pipefail` reports the pipeline as failed — but only
 sometimes, depending on which process finishes first. Fetch into a variable
-first, then parse. Same applies to `| head -n1`.
+first, then parse. The same applies to `| head -n1`, which is why
+`util::first_line cmd args` exists — use it rather than piping into `head`.
 
 **`return 1` fires the ERR trap.** With `errtrace` on, returning non-zero to
 signal an expected outcome prints a spurious "Failed at line N". Record the
