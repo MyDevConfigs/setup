@@ -32,7 +32,7 @@ export SETUP_ROOT
 export SETUP_DRY_RUN SETUP_ASSUME_YES SETUP_LOG_LEVEL
 
 # Load order matters: log has no dependencies, util needs log,
-# os needs log+util, pkg needs all three.
+# os needs log+util, pkg needs all three, shell needs log+util.
 # shellcheck source=lib/log.sh
 source "$SETUP_ROOT/lib/log.sh"
 # shellcheck source=lib/util.sh
@@ -41,6 +41,14 @@ source "$SETUP_ROOT/lib/util.sh"
 source "$SETUP_ROOT/lib/os.sh"
 # shellcheck source=lib/pkg.sh
 source "$SETUP_ROOT/lib/pkg.sh"
+# shellcheck source=lib/shell.sh
+source "$SETUP_ROOT/lib/shell.sh"
 
 # Detect the host once, here, so every module can rely on OS_* being set.
 os::detect
+
+# Resolve the shell choice from the environment and .setup.local. This never
+# prompts — `--list` and standalone module runs both reach this line, and
+# neither should block on input. setup.sh calls shell::choose separately,
+# which is the only thing allowed to ask.
+shell::load

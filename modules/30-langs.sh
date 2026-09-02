@@ -45,12 +45,15 @@ langs::install_rustup() {
 
     util::download "https://sh.rustup.rs" "$installer"
 
-    # --no-modify-path stops rustup editing the shell rc files itself; it
-    # appends unconditionally and would add a duplicate line on every run.
-    # util::append_once does the same job idempotently.
+    # --no-modify-path stops rustup editing the shell rc files itself. Left
+    # to its own devices it appends unconditionally, and it targets the rc
+    # files of shells it detects rather than the one this repo standardizes
+    # on. lib/shell.sh writes the loader to ~/.zshrc, once.
     util::run sh "$installer" -y --no-modify-path --default-toolchain stable
 
-    util::append_once "$HOME/.bashrc" '. "$HOME/.cargo/env"'
+    # Semantic, not a raw line: rustup ships env.fish alongside env because
+    # fish cannot parse the POSIX one, and the backend knows to prefer it.
+    shell::source_file "$HOME/.cargo/env" "cargo environment"
 }
 
 util::ensure_command rustup "Rust toolchain (rustup)" langs::install_rustup

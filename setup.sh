@@ -104,6 +104,18 @@ main::module_description() {
     fi
 }
 
+# main::module_required <path> — does the module declare itself required?
+#
+# A module carrying "# module-required: true" runs on every invocation, even
+# when --only or --skip would exclude it. That is for steps later modules
+# genuinely depend on rather than merely prefer: 00-shell installs zsh and
+# creates the ~/.zshrc that every later module writes its PATH and env lines
+# into, so `--only langs` on a fresh machine must still run it or the rust
+# environment line has nowhere to go.
+main::module_required() {
+    grep -qE '^# module-required:[[:space:]]*true[[:space:]]*$' -- "$1" 2>/dev/null
+}
+
 # main::discover — print every module path, in execution order.
 main::discover() {
     [[ -d "$MODULES_DIR" ]] || return 0
@@ -124,13 +136,19 @@ main::list_modules() {
     fi
 
     printf '\n%sAvailable modules%s\n\n' "$C_BOLD" "$C_RESET"
-    local path
+    local path tag
     for path in "${modules[@]}"; do
-        printf '  %s%-14s%s %s\n' \
+        if main::module_required "$path"; then
+            tag="${C_YELLOW}[required]${C_RESET} "
+        else
+            tag=""
+        fi
+        printf '  %s%-14s%s %s%s\n' \
             "$C_CYAN" "$(main::module_name "$path")" "$C_RESET" \
-            "$(main::module_description "$path")"
+            "$tag" "$(main::module_description "$path")"
     done
-    printf '\n'
+    printf '\n  %sRequired modules run even when --only or --skip excludes them.%s\n\n' \
+        "$C_DIM" "$C_RESET"
 }
 
 # main::selected <name> — should this module run, given --only and --skip?
@@ -197,9 +215,13 @@ main::run_modules() {
         name="$(main::module_name "$path")"
 
         if ! main::selected "$name"; then
-            skipped+=("$name")
-            log::debug "skipping module: $name"
-            continue
+            if main::module_required "$path"; then
+                log::info "$name is required — running it despite the filters"
+            else
+                skipped+=("$name")
+                log::debug "skipping module: $name"
+                continue
+            fi
         fi
 
         log::step "$name — $(main::module_description "$path")"
@@ -311,6 +333,13 @@ main() {
     util::is_dry && log::warn "Dry run — no changes will be made"
 
     main::preflight
+
+    # Resolve the shell before any module runs. This is the only place
+    # allowed to prompt, so the question is asked up front rather than
+    # surfacing halfway through an install.
+    shell::choose
+    shell::assert_supported
+    log::info "Shell:  ${SETUP_SHELL} (${SETUP_SHELL_RC/#$HOME/\~})"
 
     # A run-scoped state directory lets modules in separate processes share
     # facts, such as whether the package index has been refreshed yet.

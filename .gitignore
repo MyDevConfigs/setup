@@ -1,0 +1,4 @@
+# Machine-local choices written by setup.sh (which shell, which framework).
+# Deliberately not committed: a fresh clone should ask again rather than
+# inherit another machine's answers.
+.setup.local
