@@ -114,6 +114,35 @@ util::confirm() {
 }
 
 # ---------------------------------------------------------------------------
+# Installation guards
+# ---------------------------------------------------------------------------
+
+# util::ensure_command <cmd> <label> <installer> [args...]
+#
+# Install something only if its executable is missing.
+#
+# This is the command-level counterpart to pkg::install's package-level
+# check, and it exists because the two disagree. `pkg::is_installed cargo`
+# asks dpkg, which reports "not installed" on a machine that has cargo via
+# rustup — installing the apt package there would put a second, older, frozen
+# Rust toolchain on the system, with PATH order deciding which one wins.
+#
+# Rule of thumb: anything apt owns goes through pkg::install; anything with
+# its own installer (rustup, nvm, a release tarball) goes through here.
+util::ensure_command() {
+    local cmd="$1" label="$2"
+    shift 2
+
+    if util::have "$cmd"; then
+        log::skip "$label (already installed: $(command -v "$cmd"))"
+        return 0
+    fi
+
+    log::info "Installing $label"
+    "$@"
+}
+
+# ---------------------------------------------------------------------------
 # Filesystem
 # ---------------------------------------------------------------------------
 
