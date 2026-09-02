@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# module-description: Install the configured shell and make it the login shell
+# module-description: Install the configured shell, set it as login shell, seed PATH
 # module-required: true
 #
 # Runs first, on every invocation, and cannot be skipped.
@@ -26,6 +26,7 @@ source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)/lib/bootstrap.sh"
 
 readonly OMZ_DIR="$HOME/.oh-my-zsh"
 readonly OMZ_INSTALLER="https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh"
+readonly LOCAL_BIN="$HOME/.local/bin"
 
 # A standalone run of this module never went through shell::choose, so fall
 # back to whatever shell::load resolved.
@@ -34,7 +35,31 @@ readonly OMZ_INSTALLER="https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master
 log::info "Configuring shell: $SETUP_SHELL"
 
 # ---------------------------------------------------------------------------
-# Per-shell installation
+# 1. The shell itself
+# ---------------------------------------------------------------------------
+
+case "$SETUP_SHELL" in
+    zsh)
+        pkg::install zsh
+        ;;
+    bash)
+        # bash is already present on any system running this script, and
+        # Ubuntu ships a ~/.bashrc. Nothing to install; just make sure the
+        # file exists before anything appends to it.
+        if [[ -f "$SETUP_SHELL_RC" ]]; then
+            log::skip "${SETUP_SHELL_RC/#$HOME/\~} (already exists)"
+        else
+            log::info "Creating ${SETUP_SHELL_RC/#$HOME/\~}"
+            util::run touch "$SETUP_SHELL_RC"
+        fi
+        ;;
+    *)
+        util::die "No installation path for shell '$SETUP_SHELL'"
+        ;;
+esac
+
+# ---------------------------------------------------------------------------
+# 2. Framework
 # ---------------------------------------------------------------------------
 
 shell_module::install_zsh_framework() {
@@ -73,47 +98,40 @@ shell_module::install_zsh_framework() {
     esac
 }
 
-case "$SETUP_SHELL" in
-    zsh)
-        pkg::install zsh
-        ;;
-    bash)
-        # bash is already present on any system running this script, and
-        # Ubuntu ships a ~/.bashrc. Nothing to install; just make sure the
-        # file exists before anything appends to it.
-        if [[ ! -f "$SETUP_SHELL_RC" ]]; then
-            log::info "Creating ${SETUP_SHELL_RC/#$HOME/\~}"
-            util::run touch "$SETUP_SHELL_RC"
-        else
-            log::skip "${SETUP_SHELL_RC/#$HOME/\~} (already exists)"
-        fi
-        ;;
-    *)
-        util::die "No installation path for shell '$SETUP_SHELL'"
-        ;;
-esac
+if [[ "$SETUP_SHELL" == "zsh" ]]; then
+    shell_module::install_zsh_framework
+fi
 
-# Under --dry-run the shell was never actually installed, so the steps below
-# have nothing real to inspect. Report what they would do and stop.
+# ---------------------------------------------------------------------------
+# 3. ~/.local/bin on PATH
+#
+# The conventional location for user-installed binaries, and where several
+# later modules drop things — release tarballs, pipx shims, and the symlinks
+# that give Debian's fdfind and batcat their upstream names.
+#
+# It belongs here rather than in a later module for two reasons: the entry
+# has to exist before anything installs into it, and this is the module that
+# owns the rc file. Note that Ubuntu's stock ~/.profile adds this directory
+# only if it already exists at login, and nothing adds it for zsh at all.
+# ---------------------------------------------------------------------------
+
+util::ensure_dir "$LOCAL_BIN"
+shell::add_path "$LOCAL_BIN"
+
+# ---------------------------------------------------------------------------
+# 4. Login shell
+# ---------------------------------------------------------------------------
+
+# Under --dry-run the shell was never actually installed, so there is no
+# binary to resolve. Report what would happen and stop.
 if ! util::have "$SETUP_SHELL"; then
     if util::is_dry; then
-        if [[ "$SETUP_SHELL" == "zsh" && "${SETUP_ZSH_FRAMEWORK:-oh-my-zsh}" != "none" ]]; then
-            log::dry "install ${SETUP_ZSH_FRAMEWORK:-oh-my-zsh}"
-        fi
         log::dry "chsh -s \$(command -v $SETUP_SHELL) $USER"
         log::success "Shell environment ready"
         exit 0
     fi
     util::die "$SETUP_SHELL is still not on PATH after installing it"
 fi
-
-if [[ "$SETUP_SHELL" == "zsh" ]]; then
-    shell_module::install_zsh_framework
-fi
-
-# ---------------------------------------------------------------------------
-# Login shell
-# ---------------------------------------------------------------------------
 
 shell_path="$(command -v "$SETUP_SHELL")"
 readonly shell_path

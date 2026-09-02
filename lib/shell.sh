@@ -245,7 +245,7 @@ shell::add_block() {
     '${SETUP_SHELL}'."
     fi
 
-    if [[ -f "$rc" ]] && grep -qxF -- "$begin" "$rc"; then
+    if shell::has_block "$marker"; then
         log::skip "$marker block (already in $pretty)"
         return 0
     fi
@@ -264,13 +264,66 @@ shell::add_block() {
     } >>"$rc"
 }
 
+# ---------------------------------------------------------------------------
+# Predicates
+#
+# The writers above already skip a line that is present, so a module does not
+# need these merely to avoid a duplicate append. Reach for them when the
+# *work that produces* the line is expensive and should be skipped too —
+# downloading an installer, cloning a plugin repo, querying a network
+# service — rather than just the write.
+#
+#     if ! shell::has_source "$HOME/.nvm/nvm.sh"; then
+#         install_nvm                                  # the expensive part
+#         shell::source_file "$HOME/.nvm/nvm.sh"
+#     fi
+#
+# These are pure reads, so unlike shell::add_line they carry no POSIX guard;
+# on a non-POSIX shell shell::has_line simply reports what is in the file.
+# ---------------------------------------------------------------------------
+
+# shell::has_line <raw> — is this exact line already in the rc file?
+shell::has_line() {
+    shell::_contains "$1"
+}
+
+# shell::has_path <dir> — is this directory already added to PATH?
+shell::has_path() {
+    shell::_contains "$("_shell::${SETUP_SHELL}::render_path" "$1")"
+}
+
+# shell::has_env <NAME> <VALUE> — is this variable already exported?
+shell::has_env() {
+    shell::_contains "$("_shell::${SETUP_SHELL}::render_env" "$1" "$2")"
+}
+
+# shell::has_source <path> — is this file already sourced from the rc file?
+shell::has_source() {
+    shell::_contains "$("_shell::${SETUP_SHELL}::render_source" "$1")"
+}
+
+# shell::has_block <marker> — is this fenced block already present?
+shell::has_block() {
+    shell::_contains "# >>> ${1} >>>"
+}
+
+# shell::_contains <line> — exact whole-line match in the rc file.
+#
+# -x anchors to the whole line and -F disables regex, so a line is never
+# matched by something that merely contains it.
+shell::_contains() {
+    local rc="${SETUP_SHELL_RC:-}"
+    [[ -n "$rc" && -f "$rc" ]] || return 1
+    grep -qxF -- "$1" "$rc"
+}
+
 # shell::_write <line> <label> — the single point where the rc file is touched.
 shell::_write() {
     local line="$1" label="$2"
     local rc="$SETUP_SHELL_RC"
     local pretty="${rc/#$HOME/\~}"
 
-    if [[ -f "$rc" ]] && grep -qxF -- "$line" "$rc"; then
+    if shell::_contains "$line"; then
         log::skip "$label (already in $pretty)"
         return 0
     fi
