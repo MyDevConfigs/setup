@@ -139,6 +139,59 @@ pkg::install() {
     "_pkg::${OS_FAMILY}::install" "${missing[@]}"
 }
 
+# pkg::add_apt_repo <name> <key-url> <repo-url> <suite> <components...>
+#
+# Register a third-party apt repository with a signed-by keyring, the way
+# every upstream now documents it. Idempotent: does nothing when both the
+# keyring and the sources file are already in place.
+#
+#     pkg::add_apt_repo github-cli \
+#         https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+#         https://cli.github.com/packages stable main
+#
+# apt-key and a bare `deb` line without signed-by are both deprecated: a key
+# added the old way is trusted for *every* repository on the system, so a
+# compromised third-party repo could serve a signed replacement for any
+# package. signed-by scopes the key to the one repository it belongs to.
+pkg::add_apt_repo() {
+    os::require_family debian
+
+    local name="$1" key_url="$2" repo_url="$3" suite="$4"
+    shift 4
+    local components="$*"
+
+    local keyring="/etc/apt/keyrings/${name}-archive-keyring.gpg"
+    local list="/etc/apt/sources.list.d/${name}.list"
+
+    if [[ -f "$keyring" && -f "$list" ]]; then
+        log::skip "$name apt repository (already configured)"
+        return 0
+    fi
+
+    log::info "Adding the $name apt repository"
+
+    util::sudo install -d -m 0755 /etc/apt/keyrings /etc/apt/sources.list.d
+
+    # Download as the normal user, then install as root. Piping curl straight
+    # into a privileged write would mean a truncated download lands as a
+    # valid-looking keyring.
+    local tmp
+    tmp="$(util::tmpdir)/${name}.gpg"
+    util::download "$key_url" "$tmp"
+    util::sudo install -m 0644 "$tmp" "$keyring"
+
+    local arch
+    arch="$(dpkg --print-architecture)"
+    util::sudo tee "$list" >/dev/null <<<"deb [arch=${arch} signed-by=${keyring}] ${repo_url} ${suite} ${components}"
+
+    # A new repository means the cached index is stale, so drop the
+    # once-per-run stamp and refresh again.
+    if [[ -n "${SETUP_STATE_DIR:-}" ]]; then
+        rm -f "$SETUP_STATE_DIR/pkg-refreshed"
+    fi
+    pkg::refresh
+}
+
 # pkg::assert_supported — abort early if this host has no implementation.
 #
 # Called once by setup.sh so an unsupported distro fails on line one with a
