@@ -69,10 +69,6 @@ if [[ -d "$HOME/.cargo/bin" ]]; then
 fi
 
 # langs::report_version <label> <command> [args...]
-#
-# Deliberately avoids `... | head -n1`: under pipefail, head exiting early can
-# kill the producer with SIGPIPE and fail the pipeline. Trimming the string
-# after capture has no such race.
 langs::report_version() {
     local label="$1"
     shift
@@ -83,8 +79,8 @@ langs::report_version() {
     fi
 
     local output
-    output="$("$@" 2>/dev/null)" || output="(version check failed)"
-    log::info "$label: ${output%%$'\n'*}"
+    output="$(util::first_line "$@")" || output="(version check failed)"
+    log::info "$label: $output"
 }
 
 langs::report_version "Go" go version

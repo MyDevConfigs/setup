@@ -142,6 +142,47 @@ util::ensure_command() {
     "$@"
 }
 
+# util::first_line <command> [args...] — run a command, print its first line.
+#
+# Deliberately not `cmd | head -n1`. Under pipefail, head exits as soon as it
+# has its line, the producer takes SIGPIPE, and the pipeline is reported as
+# failed — intermittently, depending on which finishes first. Capturing the
+# whole output and trimming afterwards has no such race.
+#
+# Returns non-zero if the command itself fails, so version probes on a
+# missing binary do not print a stray blank line.
+util::first_line() {
+    local output
+    output="$("$@" 2>/dev/null)" || return 1
+    printf '%s' "${output%%$'\n'*}"
+}
+
+# util::prompt <question> [default] — ask for a value, print the answer.
+#
+# Prints only the answer on stdout, so it composes: name="$(util::prompt ...)".
+# bash writes the `read -p` prompt to stderr, which is what keeps that clean.
+#
+# Returns the default unchanged when there is no terminal or --yes was
+# passed, so an unattended run never blocks. Pass an empty default for a
+# question that has no sensible fallback and check the result.
+util::prompt() {
+    local question="$1" default="${2:-}" reply
+
+    if ! util::is_interactive || [[ "${SETUP_ASSUME_YES:-0}" == "1" ]]; then
+        log::debug "not prompting (using default '${default}'): $question"
+        printf '%s' "$default"
+        return 0
+    fi
+
+    if [[ -n "$default" ]]; then
+        read -r -p "  ? ${question} [${default}]: " reply
+    else
+        read -r -p "  ? ${question}: " reply
+    fi
+
+    printf '%s' "${reply:-$default}"
+}
+
 # ---------------------------------------------------------------------------
 # Filesystem
 # ---------------------------------------------------------------------------
