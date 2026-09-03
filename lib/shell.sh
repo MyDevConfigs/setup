@@ -359,6 +359,7 @@ _shell::bash::render_source()    { _shell::posix::render_source "$@"; }
 #
 # $PATH is left unexpanded in the written line so the rc file stays correct
 # regardless of what PATH happened to be when setup.sh ran.
+# shellcheck disable=SC2016  # $PATH must stay literal in the written line
 _shell::posix::render_path()   { printf 'export PATH="%s:$PATH"' "$1"; }
 _shell::posix::render_source() { printf '. "%s"' "$1"; }
 _shell::posix::render_env() {

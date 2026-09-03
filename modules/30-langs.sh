@@ -14,6 +14,7 @@ set -o nounset
 set -o pipefail
 set -o errtrace
 
+# shellcheck source-path=SCRIPTDIR
 # shellcheck source=../lib/bootstrap.sh
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)/lib/bootstrap.sh"
 
