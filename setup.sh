@@ -15,10 +15,10 @@
 #
 # Repository: https://github.com/<user>/setup
 
-set -o errexit   # abort on any unhandled non-zero status
-set -o nounset   # abort on expansion of an unset variable
-set -o pipefail  # a pipeline fails if any stage fails
-set -o errtrace  # let the ERR trap fire inside functions too
+set -o errexit  # abort on any unhandled non-zero status
+set -o nounset  # abort on expansion of an unset variable
+set -o pipefail # a pipeline fails if any stage fails
+set -o errtrace # let the ERR trap fire inside functions too
 
 # ---------------------------------------------------------------------------
 # Library
@@ -302,7 +302,9 @@ main::summary() {
         done
         printf '\n' >&2
         log::info "Re-run just the failures with: ./setup.sh --only $(
-            IFS=,; printf '%s' "${failed[*]}")"
+            IFS=,
+            printf '%s' "${failed[*]}"
+        )"
 
         # Record the failure for main() to turn into an exit status, rather
         # than returning non-zero from here. With errtrace on, a bare
@@ -332,23 +334,31 @@ declare -i FAILED_COUNT=0
 main::parse_args() {
     while (($# > 0)); do
         case "$1" in
-            -l | --list)    LIST_ONLY=1 ;;
-            -n | --dry-run) SETUP_DRY_RUN=1 ;;
-            -y | --yes)     SETUP_ASSUME_YES=1 ;;
-            -v | --verbose) SETUP_LOG_LEVEL=debug ;;
-            -q | --quiet)   SETUP_LOG_LEVEL=warn ;;
-            -h | --help)    main::usage; exit 0 ;;
-            -o | --only)
-                [[ $# -ge 2 ]] || util::die "--only requires a value"
-                IFS=, read -r -a ONLY <<<"$2"
-                shift ;;
-            -s | --skip)
-                [[ $# -ge 2 ]] || util::die "--skip requires a value"
-                IFS=, read -r -a SKIP <<<"$2"
-                shift ;;
-            --) shift; break ;;
-            -*) util::die "Unknown option: $1 (try --help)" ;;
-            *)  util::die "Unexpected argument: $1 (try --help)" ;;
+        -l | --list) LIST_ONLY=1 ;;
+        -n | --dry-run) SETUP_DRY_RUN=1 ;;
+        -y | --yes) SETUP_ASSUME_YES=1 ;;
+        -v | --verbose) SETUP_LOG_LEVEL=debug ;;
+        -q | --quiet) SETUP_LOG_LEVEL=warn ;;
+        -h | --help)
+            main::usage
+            exit 0
+            ;;
+        -o | --only)
+            [[ $# -ge 2 ]] || util::die "--only requires a value"
+            IFS=, read -r -a ONLY <<<"$2"
+            shift
+            ;;
+        -s | --skip)
+            [[ $# -ge 2 ]] || util::die "--skip requires a value"
+            IFS=, read -r -a SKIP <<<"$2"
+            shift
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*) util::die "Unknown option: $1 (try --help)" ;;
+        *) util::die "Unexpected argument: $1 (try --help)" ;;
         esac
         shift
     done
