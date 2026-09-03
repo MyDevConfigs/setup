@@ -21,6 +21,7 @@ set -o nounset
 set -o pipefail
 set -o errtrace
 
+# shellcheck source-path=SCRIPTDIR
 # shellcheck source=../lib/bootstrap.sh
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)/lib/bootstrap.sh"
 
@@ -105,14 +106,17 @@ fi
 # ---------------------------------------------------------------------------
 # 3. ~/.local/bin on PATH
 #
-# The conventional location for user-installed binaries, and where several
-# later modules drop things — release tarballs, pipx shims, and the symlinks
-# that give Debian's fdfind and batcat their upstream names.
+# Reserved for the user's own scripts. Nothing this repository installs may
+# be placed here — see "Where things get installed" in AGENTS.md. Tools go
+# where their own documentation says: their own home (~/.nvm, ~/.pyenv),
+# /opt for self-contained upstream trees, or /usr/local/bin for single
+# binaries.
 #
-# It belongs here rather than in a later module for two reasons: the entry
-# has to exist before anything installs into it, and this is the module that
-# owns the rc file. Note that Ubuntu's stock ~/.profile adds this directory
-# only if it already exists at login, and nothing adds it for zsh at all.
+# The directory is created and put on PATH here rather than in a later
+# module because this is the module that owns the rc file, and because the
+# entry should exist from the very first run whether or not anything has
+# been put in it yet. Ubuntu's stock ~/.profile adds this directory only if
+# it already exists at login, and nothing adds it for zsh at all.
 # ---------------------------------------------------------------------------
 
 util::ensure_dir "$LOCAL_BIN"
