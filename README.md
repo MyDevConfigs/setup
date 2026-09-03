@@ -28,16 +28,16 @@ idempotent: it checks what is present, skips it, and moves on.
 
 ## Options
 
-| Flag | Effect |
-| --- | --- |
-| `-l`, `--list` | List available modules and exit |
-| `-o`, `--only <a,b>` | Run only these modules |
-| `-s`, `--skip <a,b>` | Run everything except these |
-| `-n`, `--dry-run` | Print every command, execute nothing |
-| `-y`, `--yes` | Answer yes to all prompts (unattended runs) |
-| `-v`, `--verbose` | Show debug output, including each command |
-| `-q`, `--quiet` | Warnings and errors only |
-| `-h`, `--help` | Show help |
+| Flag                 | Effect                                      |
+| -------------------- | ------------------------------------------- |
+| `-l`, `--list`       | List available modules and exit             |
+| `-o`, `--only <a,b>` | Run only these modules                      |
+| `-s`, `--skip <a,b>` | Run everything except these                 |
+| `-n`, `--dry-run`    | Print every command, execute nothing        |
+| `-y`, `--yes`        | Answer yes to all prompts (unattended runs) |
+| `-v`, `--verbose`    | Show debug output, including each command   |
+| `-q`, `--quiet`      | Warnings and errors only                    |
+| `-h`, `--help`       | Show help                                   |
 
 `GITHUB_TOKEN` raises the GitHub API rate limit used when resolving the
 latest release of a tool. `NO_COLOR` disables colored output.
@@ -46,24 +46,24 @@ latest release of a tool. `NO_COLOR` disables colored output.
 
 ## Modules
 
-| Module | Installs |
-| --- | --- |
-| `shell` **(required)** | The shell you chose, and makes it your login shell |
-| `core` | git, curl, wget, build-essential, clang, cmake, pkg-config, perl, unzip, fzf, stow, shellcheck |
-| `cli` | ripgrep, fd, bat, eza, jq, delta, direnv, zoxide, btop, just, atuin |
-| `zshplugins` | zsh-autosuggestions, zsh-syntax-highlighting (zsh only) |
-| `buildlibs` | sassc, libdrm-dev, libgtk-3-dev, libgdm-dev — headers for building Wayland/GTK tools from source |
-| `langs` | Go (apt), Rust (rustup) |
-| `node` | nvm, Node LTS, corepack (yarn + pnpm), bun |
-| `python` | pyenv + build deps, latest CPython, uv |
-| `java` | SDKMAN with Java LTS, Gradle, Kotlin |
-| `dotnet` | .NET 10 SDK, `~/.dotnet/tools` on PATH |
-| `gh` | GitHub CLI, from GitHub's own apt repository |
-| `neovim` | Neovim AppImage → `/opt/nvim`, plus `$EDITOR` and the `editor` alternative |
-| `tools` | lazygit, starship (+ Gruvbox Rainbow), Task — all to `/usr/local/bin` |
-| `tmux` | tmux, **compiled** from the latest upstream release; removes the distro package |
-| `apps` | timeshift |
-| `gitconfig` | git identity, default branch, pull strategy, commit editor, delta as pager |
+| Module                 | Installs                                                                                         |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `shell` **(required)** | The shell you chose, and makes it your login shell                                               |
+| `core`                 | git, curl, wget, build-essential, clang, cmake, pkg-config, perl, unzip, fzf, stow, shellcheck   |
+| `cli`                  | ripgrep, fd, bat, eza, jq, delta, direnv, zoxide, btop, just, atuin                              |
+| `zshplugins`           | zsh-autosuggestions, zsh-syntax-highlighting (zsh only)                                          |
+| `buildlibs`            | sassc, libdrm-dev, libgtk-3-dev, libgdm-dev — headers for building Wayland/GTK tools from source |
+| `langs`                | Go (apt), Rust (rustup)                                                                          |
+| `node`                 | nvm, Node LTS, corepack (yarn + pnpm), bun                                                       |
+| `python`               | pyenv + build deps, latest CPython, uv                                                           |
+| `java`                 | SDKMAN with Java LTS, Gradle, Kotlin                                                             |
+| `dotnet`               | .NET 10 SDK, `~/.dotnet/tools` on PATH                                                           |
+| `gh`                   | GitHub CLI, from GitHub's own apt repository                                                     |
+| `neovim`               | Neovim AppImage → `/opt/nvim`, plus `$EDITOR` and the `editor` alternative                       |
+| `tools`                | lazygit, starship (+ Gruvbox Rainbow), Task — all to `/usr/local/bin`                            |
+| `tmux`                 | tmux, **compiled** from the latest upstream release; removes the distro package                  |
+| `apps`                 | timeshift                                                                                        |
+| `gitconfig`            | git identity, default branch, pull strategy, commit editor, delta as pager                       |
 
 `shell` is marked required: it runs on every invocation and `--skip shell`
 will not exclude it. Every other module writes its `PATH` and environment
@@ -99,7 +99,7 @@ The first run asks:
 ```
 
 The answer is saved to `.setup.local`, which is gitignored — it records what
-*this* machine chose, so a fresh clone asks again. Delete the file to be
+_this_ machine chose, so a fresh clone asks again. Delete the file to be
 asked once more.
 
 You can skip the prompt entirely:
@@ -129,7 +129,7 @@ Modules that need to extend `PATH` or source an env file go through
 `~/.zshrc` or `~/.bashrc`. Writes are idempotent, so re-running never
 duplicates a line.
 
-Modules describe *intent* rather than shell syntax:
+Modules describe _intent_ rather than shell syntax:
 
 ```bash
 shell::add_path   "$HOME/.local/bin"
@@ -206,7 +206,7 @@ Rules worth knowing:
 
 - **Use generic package names.** `pkg::install fd` resolves to `fd-find` on
   Debian and `fd` on Arch via the lookup tables in `lib/pkg.sh`. Where a
-  distro also renames the *binary* — Debian ships `fd` as `fdfind` and `bat`
+  distro also renames the _binary_ — Debian ships `fd` as `fdfind` and `bat`
   as `batcat` — `pkg::binary_for fd` returns the real name.
 - **Package-installed and command-installed are different checks.** Use
   `pkg::install` for anything the package manager owns, and
@@ -218,7 +218,7 @@ Rules worth knowing:
   index afterwards. See `modules/40-gh.sh`.
 - **Skip expensive work, not just the write.** `shell::add_path` and friends
   already skip a line that is present. The `shell::has_*` predicates let you
-  skip the work that *produces* it:
+  skip the work that _produces_ it:
 
   ```bash
   if ! shell::has_source "$HOME/.nvm/nvm.sh"; then
@@ -250,12 +250,12 @@ Nothing else changes — no module references a package manager directly.
 **`~/.local/bin` is yours** — for your own scripts. Nothing this repo
 installs goes there. Everything else lands where its own documentation says:
 
-| Destination | For |
-| --- | --- |
+| Destination         | For                                                     |
+| ------------------- | ------------------------------------------------------- |
 | The tool's own home | `~/.nvm`, `~/.pyenv`, `~/.sdkman`, `~/.bun`, `~/.cargo` |
-| `/opt/<name>` | Self-contained upstream trees — neovim → `/opt/nvim` |
-| `/usr/local/bin` | Single upstream binaries — lazygit, starship, task, uv |
-| `/usr/bin` | Anything from the distro archive |
+| `/opt/<name>`       | Self-contained upstream trees — neovim → `/opt/nvim`    |
+| `/usr/local/bin`    | Single upstream binaries — lazygit, starship, task, uv  |
+| `/usr/bin`          | Anything from the distro archive                        |
 
 Installers that default to `~/.local/bin` are redirected: `uv` via
 `UV_INSTALL_DIR`, others via a `-b` / `--bin-dir` flag.
@@ -271,14 +271,14 @@ verifying it and removing that guard, not writing new code.
 
 A backend implements six functions:
 
-| Function | Returns |
-| --- | --- |
-| `rc_path` | The rc file to write to |
-| `is_posix` | Whether `shell::add_line` / `add_block` are usable |
-| `render_path <dir>` | A line that prepends `<dir>` to `PATH` |
-| `render_env <name> <value>` | A line that exports a variable |
-| `render_source <path>` | A line that sources a file |
-| `assert_supported` | Nothing, or dies if the backend is not ready |
+| Function                    | Returns                                            |
+| --------------------------- | -------------------------------------------------- |
+| `rc_path`                   | The rc file to write to                            |
+| `is_posix`                  | Whether `shell::add_line` / `add_block` are usable |
+| `render_path <dir>`         | A line that prepends `<dir>` to `PATH`             |
+| `render_env <name> <value>` | A line that exports a variable                     |
+| `render_source <path>`      | A line that sources a file                         |
+| `assert_supported`          | Nothing, or dies if the backend is not ready       |
 
 No module changes when you add one — that is the point of the semantic API.
 
