@@ -13,6 +13,7 @@ set -o nounset
 set -o pipefail
 set -o errtrace
 
+# shellcheck source-path=SCRIPTDIR
 # shellcheck source=../lib/bootstrap.sh
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)/lib/bootstrap.sh"
 
@@ -157,11 +158,69 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Editor
+#
+# Separate from $EDITOR. Git prefers core.editor when set, and plenty of
+# people want a different editor for commit messages than for everything
+# else — so this fills the blank rather than assuming they should match.
+#
+# Guarded on nvim actually existing, so `--skip neovim` does not leave git
+# pointing at a missing binary.
+# ---------------------------------------------------------------------------
+
+log::info "Commit editor"
+
+if util::have nvim; then
+    gitcfg::ensure core.editor "core.editor" "Editor for commit messages" "nvim"
+else
+    current_editor="$(gitcfg::get core.editor)"
+    if [[ -n "$current_editor" ]]; then
+        log::skip "core.editor: $current_editor"
+    else
+        log::warn "neovim is not installed — leaving core.editor unset"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Diff pager
+#
+# delta re-renders git's diffs with syntax highlighting and word-level
+# changes, so a one-character edit is visible as one character rather than
+# two nearly identical lines.
+#
+# Only the command-line half is set here. lazygit does not read core.pager —
+# it captures git's output into its own panel — and needs
+# `git.paging.pager` in ~/.config/lazygit/config.yml. That is a config file,
+# so it belongs in the dotfiles repository, not here.
+# ---------------------------------------------------------------------------
+
+log::info "Diff pager"
+
+if util::have delta; then
+    current_pager="$(gitcfg::get core.pager)"
+
+    if [[ -n "$current_pager" ]]; then
+        log::skip "core.pager: $current_pager"
+    else
+        gitcfg::set core.pager delta
+        gitcfg::set interactive.diffFilter "delta --color-only"
+        gitcfg::set delta.navigate true       # n / N jump between files
+        gitcfg::set delta.line-numbers true
+        # zdiff3 shows the common ancestor in a conflict, which makes it far
+        # easier to see what each side actually changed.
+        gitcfg::set merge.conflictstyle zdiff3
+        log::success "core.pager: delta"
+    fi
+else
+    log::warn "delta is not installed — leaving core.pager unset"
+fi
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 
 log::info "Global git config now:"
-for key in user.name user.email init.defaultBranch pull.rebase pull.ff; do
+for key in user.name user.email init.defaultBranch pull.rebase pull.ff core.editor core.pager; do
     value="$(gitcfg::get "$key")"
     if [[ -n "$value" ]]; then
         log::info "    $key = $value"
