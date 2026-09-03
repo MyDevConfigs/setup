@@ -122,6 +122,30 @@ writing new code, and no module changes.
 A backend implements: `rc_path`, `is_posix`, `render_path`, `render_env`,
 `render_source`, `assert_supported`.
 
+### Where things get installed
+
+**`~/.local/bin` belongs to the user.** It holds their own scripts. Nothing
+this repository installs may be placed there, ever — not a release binary,
+not a symlink, not a shim. `00-shell.sh` creates it and puts it on PATH, and
+that is the only involvement this repo has with it.
+
+Everything else goes where its own documentation says to put it:
+
+| Destination | For | Examples |
+| --- | --- | --- |
+| The tool's own home | Version managers that own a directory | `~/.nvm`, `~/.pyenv`, `~/.sdkman`, `~/.bun`, `~/.cargo` |
+| `/opt/<name>` | Self-contained upstream trees | neovim → `/opt/nvim` |
+| `/usr/local/bin` | Single binaries installed system-wide | lazygit, starship, task, uv |
+| `/usr/bin` | Anything from the distro archive | delta, bat, eza, gh |
+
+When an installer defaults to `~/.local/bin`, override it — `uv` takes
+`UV_INSTALL_DIR`, most others take a `-b` or `--bin-dir` flag. If one cannot
+be redirected, install it another way rather than letting it write there.
+
+`/usr/local/bin` is also where a canonical-name symlink goes when Debian
+renames a binary (`fdfind` → `fd`, `batcat` → `bat`); see
+`cli::link_canonical_name` in `modules/11-cli.sh`.
+
 ### Bash, not Python
 
 `setup.sh` bootstraps a *fresh* machine, where `python3`, `pip` and any

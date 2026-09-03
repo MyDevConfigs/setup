@@ -50,11 +50,19 @@ latest release of a tool. `NO_COLOR` disables colored output.
 | --- | --- |
 | `shell` **(required)** | The shell you chose, and makes it your login shell |
 | `core` | git, curl, wget, build-essential, clang, cmake, pkg-config, perl, unzip, fzf, stow, shellcheck |
+| `cli` | ripgrep, fd, bat, eza, jq, delta, direnv, tmux, zoxide, btop, just, atuin |
+| `zshplugins` | zsh-autosuggestions, zsh-syntax-highlighting (zsh only) |
 | `buildlibs` | sassc, libdrm-dev, libgtk-3-dev, libgdm-dev — headers for building Wayland/GTK tools from source |
 | `langs` | Go (apt), Rust (rustup) |
+| `node` | nvm, Node LTS, corepack (yarn + pnpm), bun |
+| `python` | pyenv + build deps, latest CPython, uv |
+| `java` | SDKMAN with Java LTS, Gradle, Kotlin |
+| `dotnet` | .NET 10 SDK, `~/.dotnet/tools` on PATH |
 | `gh` | GitHub CLI, from GitHub's own apt repository |
+| `neovim` | Neovim AppImage → `/opt/nvim`, plus `$EDITOR` and the `editor` alternative |
+| `tools` | lazygit, starship (+ Gruvbox Rainbow), Task — all to `/usr/local/bin` |
 | `apps` | timeshift |
-| `gitconfig` | Global git identity, default branch and pull strategy |
+| `gitconfig` | git identity, default branch, pull strategy, commit editor, delta as pager |
 
 `shell` is marked required: it runs on every invocation and `--skip shell`
 will not exclude it. Every other module writes its `PATH` and environment
@@ -111,10 +119,9 @@ has been tested. Choosing it fails with a message pointing at the guard.
 
 `shell` sets your chosen shell as the login shell via `chsh`. **This takes
 effect at your next login**, not immediately. It also creates `~/.local/bin`
-and puts it on `PATH` — the conventional place for user-installed binaries,
-which later modules drop things into. Ubuntu's stock `~/.profile` adds that
-directory only if it already exists at login, and nothing adds it for zsh at
-all.
+and puts it on `PATH` — **reserved for your own scripts**; nothing this repo
+installs is placed there. Ubuntu's stock `~/.profile` adds that directory
+only if it already exists at login, and nothing adds it for zsh at all.
 
 Modules that need to extend `PATH` or source an env file go through
 `lib/shell.sh`, which writes to whichever rc file your shell uses —
@@ -154,9 +161,17 @@ lib/
 modules/
   00-shell.sh         chosen shell + framework [required]
   10-core.sh          base tools and compilers
+  11-cli.sh           modern CLI tools from the archive
+  12-zshplugins.sh    zsh autosuggestions + syntax highlighting
   20-buildlibs.sh     -dev headers
   30-langs.sh         Go, Rust
+  32-node.sh          nvm, Node, corepack, bun
+  33-python.sh        pyenv, CPython, uv
+  34-java.sh          SDKMAN: Java, Gradle, Kotlin
+  35-dotnet.sh        .NET 10 SDK
   40-gh.sh            GitHub CLI (third-party apt repo)
+  41-neovim.sh        Neovim AppImage -> /opt/nvim
+  42-tools.sh         lazygit, starship, Task -> /usr/local/bin
   50-apps.sh          desktop applications
   60-gitconfig.sh     git global settings (prompts, runs last)
 ```
@@ -225,6 +240,23 @@ something wrong.
 To add one, fill in the four `_pkg::<family>::*` functions at the bottom of
 `lib/pkg.sh` and add any differing names to `PKG_ALIASES` / `PKG_BINARIES`.
 Nothing else changes — no module references a package manager directly.
+
+---
+
+## Where things get installed
+
+**`~/.local/bin` is yours** — for your own scripts. Nothing this repo
+installs goes there. Everything else lands where its own documentation says:
+
+| Destination | For |
+| --- | --- |
+| The tool's own home | `~/.nvm`, `~/.pyenv`, `~/.sdkman`, `~/.bun`, `~/.cargo` |
+| `/opt/<name>` | Self-contained upstream trees — neovim → `/opt/nvim` |
+| `/usr/local/bin` | Single upstream binaries — lazygit, starship, task, uv |
+| `/usr/bin` | Anything from the distro archive |
+
+Installers that default to `~/.local/bin` are redirected: `uv` via
+`UV_INSTALL_DIR`, others via a `-b` / `--bin-dir` flag.
 
 ---
 
