@@ -244,6 +244,43 @@ main::run_modules() {
     main::summary "${#ran[@]}" "${#failed[@]}" "${#skipped[@]}" "${failed[@]:-}"
 }
 
+# main::epilogue — validate the rc file and say how to pick up the changes.
+#
+# setup.sh runs as a child of the user's shell, so it cannot source anything
+# into it: every module runs in its own process, and those exit. `cd` in a
+# script does not move the calling shell for the same reason. The only honest
+# options are to tell the user what to run, and to check first that doing so
+# is safe.
+#
+# The check matters. Modules append PATH entries, env vars and loader lines to
+# the rc file, and a malformed one would otherwise stay invisible until the
+# next login — in a shell that might then fail to start.
+main::epilogue() {
+    util::is_dry && return 0
+
+    local rc="${SETUP_SHELL_RC:-}"
+    [[ -n "$rc" && -f "$rc" ]] || return 0
+
+    local pretty="${rc/#$HOME/\~}"
+
+    if util::have "$SETUP_SHELL"; then
+        local parse_errors
+        if parse_errors="$("$SETUP_SHELL" -n "$rc" 2>&1)"; then
+            log::success "$pretty parses cleanly"
+        else
+            log::error "$pretty has a syntax error — fix it before opening a new shell:"
+            printf '%s\n' "$parse_errors" >&2
+            return 1
+        fi
+    fi
+
+    log::info "setup.sh runs in its own process, so it cannot change the shell"
+    log::info "you launched it from. Pick up the new PATH and environment with:"
+    printf '\n      %sexec %s%s\n' "$C_BOLD" "$SETUP_SHELL" "$C_RESET" >&2
+    printf '      %s(or just open a new terminal)%s\n' "$C_DIM" "$C_RESET" >&2
+    return 0
+}
+
 main::summary() {
     local ok="$1" fail="$2" skip="$3"
     shift 3
@@ -349,6 +386,7 @@ main() {
     util::is_dry || util::sudo_init
 
     main::run_modules
+    main::epilogue || true
 
     # Exit non-zero if any module failed, so CI and `&&` chains see it.
     ((FAILED_COUNT == 0)) || exit 1
