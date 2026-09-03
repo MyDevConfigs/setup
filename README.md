@@ -50,7 +50,7 @@ latest release of a tool. `NO_COLOR` disables colored output.
 | --- | --- |
 | `shell` **(required)** | The shell you chose, and makes it your login shell |
 | `core` | git, curl, wget, build-essential, clang, cmake, pkg-config, perl, unzip, fzf, stow, shellcheck |
-| `cli` | ripgrep, fd, bat, eza, jq, delta, direnv, tmux, zoxide, btop, just, atuin |
+| `cli` | ripgrep, fd, bat, eza, jq, delta, direnv, zoxide, btop, just, atuin |
 | `zshplugins` | zsh-autosuggestions, zsh-syntax-highlighting (zsh only) |
 | `buildlibs` | sassc, libdrm-dev, libgtk-3-dev, libgdm-dev — headers for building Wayland/GTK tools from source |
 | `langs` | Go (apt), Rust (rustup) |
@@ -61,6 +61,7 @@ latest release of a tool. `NO_COLOR` disables colored output.
 | `gh` | GitHub CLI, from GitHub's own apt repository |
 | `neovim` | Neovim AppImage → `/opt/nvim`, plus `$EDITOR` and the `editor` alternative |
 | `tools` | lazygit, starship (+ Gruvbox Rainbow), Task — all to `/usr/local/bin` |
+| `tmux` | tmux, **compiled** from the latest upstream release; removes the distro package |
 | `apps` | timeshift |
 | `gitconfig` | git identity, default branch, pull strategy, commit editor, delta as pager |
 
@@ -172,6 +173,7 @@ modules/
   40-gh.sh            GitHub CLI (third-party apt repo)
   41-neovim.sh        Neovim AppImage -> /opt/nvim
   42-tools.sh         lazygit, starship, Task -> /usr/local/bin
+  43-tmux.sh          tmux, compiled from source
   50-apps.sh          desktop applications
   60-gitconfig.sh     git global settings (prompts, runs last)
 ```

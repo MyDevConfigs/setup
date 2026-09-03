@@ -33,9 +33,11 @@ declare -ra PACKAGES=(
     # Git
     delta       # syntax-highlighted, word-level git diffs
 
-    # Environment and sessions
+    # Environment
     direnv      # per-directory environment, auto-loaded on cd
-    tmux        # terminal multiplexer
+    # tmux is deliberately absent: 43-tmux.sh compiles the latest upstream
+    # release and removes the distro package. Listing it here would reinstall
+    # what that module just removed, on every run.
 
     # Monitoring
     btop
