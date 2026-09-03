@@ -296,6 +296,96 @@ util::gh_latest_tag() {
 }
 
 # ---------------------------------------------------------------------------
+# Upstream installers
+# ---------------------------------------------------------------------------
+
+# util::install_script [--interpreter sh|bash] <url> [args...]
+#
+# Download an installer and run it.
+#
+# Deliberately not `curl ... | bash`. Downloading first means a truncated or
+# failed transfer cannot execute half a script, and the whole thing goes
+# through util::run so --dry-run reports it instead of running it.
+#
+# The interpreter is a per-call choice because upstream installers genuinely
+# disagree, and there is no single answer:
+#
+#   bash (default)  bun and SDKMAN are written in bash — `[[ ]]`, arrays —
+#                   and are syntax errors under a POSIX sh.
+#   sh              starship's installer *refuses to run* under bash. It
+#                   checks BASH_VERSION and exits 1 unless POSIXLY_CORRECT
+#                   is set, telling you to use sh instead.
+#
+# Environment the installer reads must be exported by the caller:
+#
+#     PROFILE=/dev/null util::install_script "$NVM_INSTALLER"
+#
+# Almost every one of these installers wants to edit a shell rc file. Where
+# a flag or variable exists to stop it, use it, and add the lines through
+# lib/shell.sh instead — see AGENTS.md.
+util::install_script() {
+    local interpreter="bash"
+
+    while (($# > 0)); do
+        case "$1" in
+            --interpreter)
+                [[ $# -ge 2 ]] || util::die "util::install_script: --interpreter needs a value"
+                interpreter="$2"
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    (($# > 0)) || util::die "util::install_script: no URL given"
+
+    local url="$1"
+    shift
+
+    local installer
+    installer="$(util::tmpdir)/installer.sh"
+
+    util::download "$url" "$installer"
+    util::run "$interpreter" "$installer" "$@"
+}
+
+# util::install_tarball_binary <url> <binary> [dest-dir]
+#
+# Fetch a .tar.gz release, find one binary inside it, and install that
+# binary system-wide. dest-dir defaults to /usr/local/bin, the FHS location
+# for locally-installed programs — never ~/.local/bin, which belongs to the
+# user.
+util::install_tarball_binary() {
+    local url="$1" binary="$2" dest="${3:-/usr/local/bin}"
+
+    if util::is_dry; then
+        log::dry "download $url"
+        log::dry "extract and install '$binary' into $dest"
+        return 0
+    fi
+
+    local work
+    work="$(util::tmpdir)"
+
+    util::download "$url" "$work/archive.tar.gz"
+    util::run tar -xzf "$work/archive.tar.gz" -C "$work"
+
+    # Release archives disagree about whether the binary sits at the root or
+    # inside a versioned directory, so search rather than assume.
+    local found
+    found="$(find "$work" -type f -name "$binary" -perm -u+x -print -quit)"
+    [[ -n "$found" ]] || util::die "No executable named '$binary' inside $url"
+
+    util::sudo install -m 0755 "$found" "$dest/$binary"
+}
+
+# ---------------------------------------------------------------------------
 # Version comparison
 # ---------------------------------------------------------------------------
 
