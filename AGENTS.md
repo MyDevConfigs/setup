@@ -133,8 +133,17 @@ A backend implements: `rc_path`, `is_posix`, `render_path`, `render_env`,
 
 **`~/.local/bin` belongs to the user.** It holds their own scripts. Nothing
 this repository installs may be placed there, ever — not a release binary,
-not a symlink, not a shim. `00-shell.sh` creates it and puts it on PATH, and
-that is the only involvement this repo has with it.
+not a symlink, not a shim. `00-shell.sh` creates it and puts it on PATH.
+
+There is **one** exception, and it is named here rather than left to
+judgement: **Claude Code**, in `modules/46-ai.sh`. Its installer ends by
+running `claude install`, which picks the destination itself — no
+`--bin-dir`, no install-directory variable, its only argument is
+`stable|latest|VERSION` — and Claude Code self-updates into that same
+directory afterwards, so a redirected first install would not hold. That
+installer also writes its own shell integration, which makes it the one
+third-party rc edit this repo does not own. A second exception needs the
+same kind of argument, written down here.
 
 Everything else goes where its own documentation says to put it:
 
@@ -146,8 +155,9 @@ Everything else goes where its own documentation says to put it:
 | `/usr/bin` | Anything from the distro archive | delta, bat, eza, gh |
 
 When an installer defaults to `~/.local/bin`, override it — `uv` takes
-`UV_INSTALL_DIR`, most others take a `-b` or `--bin-dir` flag. If one cannot
-be redirected, install it another way rather than letting it write there.
+`UV_INSTALL_DIR`, the Copilot CLI takes `PREFIX`, most others take a `-b` or
+`--bin-dir` flag. If one cannot be redirected, install it another way rather
+than letting it write there.
 
 `/usr/local/bin` is also where a canonical-name symlink goes when Debian
 renames a binary (`fdfind` → `fd`, `batcat` → `bat`); see

@@ -62,6 +62,7 @@ latest release of a tool. `NO_COLOR` disables colored output.
 | `neovim`               | Neovim AppImage → `/opt/nvim`, plus `$EDITOR` and the `editor` alternative                       |
 | `tools`                | lazygit, starship (+ Gruvbox Rainbow), Task — all to `/usr/local/bin`                            |
 | `tmux`                 | tmux, **compiled** from the latest upstream release; removes the distro package                  |
+| `ai`                   | Claude Code, GitHub Copilot CLI                                                                  |
 | `apps`                 | timeshift                                                                                        |
 | `gitconfig`            | git identity, default branch, pull strategy, commit editor, delta as pager                       |
 
@@ -174,6 +175,7 @@ modules/
   41-neovim.sh        Neovim AppImage -> /opt/nvim
   42-tools.sh         lazygit, starship, Task -> /usr/local/bin
   43-tmux.sh          tmux, compiled from source
+  46-ai.sh            Claude Code, GitHub Copilot CLI
   50-apps.sh          desktop applications
   60-gitconfig.sh     git global settings (prompts, runs last)
 ```
@@ -248,7 +250,9 @@ Nothing else changes — no module references a package manager directly.
 ## Where things get installed
 
 **`~/.local/bin` is yours** — for your own scripts. Nothing this repo
-installs goes there. Everything else lands where its own documentation says:
+installs goes there, with one named exception: Claude Code, whose installer
+chooses that directory itself and cannot be pointed anywhere else. Everything
+else lands where its own documentation says:
 
 | Destination         | For                                                     |
 | ------------------- | ------------------------------------------------------- |
@@ -258,7 +262,8 @@ installs goes there. Everything else lands where its own documentation says:
 | `/usr/bin`          | Anything from the distro archive                        |
 
 Installers that default to `~/.local/bin` are redirected: `uv` via
-`UV_INSTALL_DIR`, others via a `-b` / `--bin-dir` flag.
+`UV_INSTALL_DIR`, the Copilot CLI via `PREFIX`, others via a `-b` /
+`--bin-dir` flag.
 
 ---
 
