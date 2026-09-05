@@ -13,6 +13,11 @@
 # shape as lib/pkg.sh: a generic API on top, family dispatch below, real
 # implementations for what is supported and honest stubs for what is not.
 #
+# Call sites pass real, expanded paths; the renderers fold a leading $HOME
+# back into the literal string before writing, so the rc file says
+# $HOME/.cargo/env rather than /home/alex/.cargo/env. See
+# shell::_home_relative.
+#
 # Intent rather than raw text is what makes fish reachable. fish is not
 # POSIX — `export PATH="x:$PATH"` is a syntax error there, and the
 # equivalent is `fish_add_path x` — so an API that passed raw lines around
@@ -311,10 +316,28 @@ shell::has_block() {
 #
 # -x anchors to the whole line and -F disables regex, so a line is never
 # matched by something that merely contains it.
+#
+# The second attempt is a migration concession. Machines provisioned before
+# the renderers started folding $HOME have the expanded path sitting in their
+# rc file — `export PATH="/home/alex/.local/bin:$PATH"` — which the folded
+# line no longer matches. Without this, the first run after the change would
+# append a second copy of every line this repo has ever written. Existing
+# lines are recognized and left exactly as they are; nothing rewrites the
+# user's rc file behind their back.
 shell::_contains() {
     local rc="${SETUP_SHELL_RC:-}"
     [[ -n "$rc" && -f "$rc" ]] || return 1
-    grep -qxF -- "$1" "$rc"
+
+    if grep -qxF -- "$1" "$rc"; then
+        return 0
+    fi
+
+    local legacy="${1//\$HOME/${HOME:-}}"
+    if [[ "$legacy" == "$1" ]]; then
+        return 1
+    fi
+
+    grep -qxF -- "$legacy" "$rc"
 }
 
 # shell::_write <line> <label> — the single point where the rc file is touched.
@@ -330,6 +353,48 @@ shell::_write() {
 
     log::info "$pretty += $label"
     util::append_once "$rc" "$line"
+}
+
+# ---------------------------------------------------------------------------
+# Rendering helpers
+#
+# Shared by every backend, because the reason applies to every shell: a line
+# written into an rc file should describe the *user's* home, not the absolute
+# path this machine happened to have when setup.sh ran.
+#
+# Modules keep passing real, expanded paths — shell::add_path "$HOME/.local/bin"
+# — because they also hand those paths to util::ensure_dir and to [[ -f ]]
+# tests. The fold happens at print time, in the renderers, so the call sites
+# and the predicates need to know nothing about it.
+# ---------------------------------------------------------------------------
+
+# shell::_home_relative <path> — rewrite a leading $HOME as the literal text.
+#
+#     /home/alex/.cargo/env  ->  $HOME/.cargo/env
+#
+# Only an exact leading component is folded. A path that merely contains the
+# home directory somewhere in the middle is left alone, and so is one that
+# only shares a prefix with it — /home/alexandra is not under /home/alex.
+# shellcheck disable=SC2016  # $HOME must stay literal in the written line
+shell::_home_relative() {
+    local path="$1" home="${HOME:-}"
+
+    # Nothing to fold against. A home of "/" would match every absolute path
+    # on the system, which is never what this is for.
+    if [[ -z "$home" || "$home" == "/" ]]; then
+        printf '%s' "$path"
+        return 0
+    fi
+
+    home="${home%/}"
+
+    if [[ "$path" == "$home" ]]; then
+        printf '$HOME'
+    elif [[ "$path" == "$home"/* ]]; then
+        printf '$HOME%s' "${path#"$home"}"
+    else
+        printf '%s' "$path"
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -358,12 +423,21 @@ _shell::bash::render_source()    { _shell::posix::render_source "$@"; }
 # PATH entry, an export or a source line is written.
 #
 # $PATH is left unexpanded in the written line so the rc file stays correct
-# regardless of what PATH happened to be when setup.sh ran.
+# regardless of what PATH happened to be when setup.sh ran. $HOME gets the
+# same treatment, via shell::_home_relative — see above.
 # shellcheck disable=SC2016  # $PATH must stay literal in the written line
-_shell::posix::render_path()   { printf 'export PATH="%s:$PATH"' "$1"; }
-_shell::posix::render_source() { printf '. "%s"' "$1"; }
+_shell::posix::render_path() {
+    printf 'export PATH="%s:$PATH"' "$(shell::_home_relative "$1")"
+}
+_shell::posix::render_source() {
+    printf '. "%s"' "$(shell::_home_relative "$1")"
+}
 _shell::posix::render_env() {
-    local value="${2//\\/\\\\}"
+    # Fold first, escape second: the $HOME this introduces contains neither a
+    # backslash nor a quote, so escaping cannot damage it.
+    local value
+    value="$(shell::_home_relative "$2")"
+    value="${value//\\/\\\\}"
     value="${value//\"/\\\"}"
     printf 'export %s="%s"' "$1" "$value"
 }
@@ -387,21 +461,29 @@ _shell::fish::rc_path()  { printf '%s' "$HOME/.config/fish/config.fish"; }
 _shell::fish::is_posix() { return 1; }
 
 # fish_add_path is idempotent in fish itself and handles ordering properly.
-_shell::fish::render_path() { printf 'fish_add_path %s' "$1"; }
+# fish expands $HOME and does not word-split variables, so the folded form is
+# safe unquoted.
+_shell::fish::render_path() {
+    printf 'fish_add_path %s' "$(shell::_home_relative "$1")"
+}
 
 _shell::fish::render_env() {
-    local value="${2//\\/\\\\}"
+    local value
+    value="$(shell::_home_relative "$2")"
+    value="${value//\\/\\\\}"
     value="${value//\"/\\\"}"
     printf 'set -gx %s "%s"' "$1" "$value"
 }
 
 # Tools that ship a POSIX env script almost always ship a .fish sibling,
 # because fish cannot parse the original. Prefer it when it exists.
+#
+# The test needs a real path, so the fold happens at print time only.
 _shell::fish::render_source() {
     local path="$1"
     if [[ -f "${path}.fish" ]]; then
-        printf 'source "%s.fish"' "$path"
+        printf 'source "%s.fish"' "$(shell::_home_relative "$path")"
     else
-        printf 'source "%s"' "$path"
+        printf 'source "%s"' "$(shell::_home_relative "$path")"
     fi
 }

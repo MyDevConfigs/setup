@@ -80,6 +80,13 @@ POSIX: `export PATH="x:$PATH"` is a syntax error there and the equivalent is
 it, so adding fish never touches a module. Prefer these three over anything
 else.
 
+Pass a **real, expanded path** — `"$HOME/.local/bin"`, not `'$HOME/.local/bin'`.
+The renderers fold a leading `$HOME` back into the literal string at print
+time, so the rc file ends up with `$HOME/.local/bin` while the module still
+has a path it can hand to `util::ensure_dir` or test with `[[ -f ]]`. The
+predicates fold identically, and also recognize the expanded form written by
+older versions of this repo, so the change did not duplicate anyone's lines.
+
 Two escape hatches take opaque text and are therefore **POSIX-only**. Both
 abort on a non-POSIX shell rather than writing something broken:
 
