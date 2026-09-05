@@ -82,8 +82,43 @@ fi
 # guard those get fifteen lines of ANSI sprite prepended to whatever they were
 # trying to capture. In a real terminal stdout is a tty, so it changes nothing
 # that anyone sees.
+#
+# The sprite is piped into fastfetch as a raw logo, so the greeting is one
+# block: Pokemon on the left, system information on the right. That costs a
+# second dependency, installed just below, and a third one this repository
+# cannot supply.
+#
+# fastfetch needs a config to produce that layout, and a config file is not
+# this repository's business — configuration lives in the dotfiles repo and is
+# deployed with stow. So the block below *asks* for the file rather than
+# assuming it. Without it fastfetch does not degrade, it fails:
+#
+#     Error: couldn't find config: ~/.config/fastfetch/config-pokemon.jsonc
+#     BrokenPipeError: [Errno 32] Broken pipe
+#
+# on every new shell, with no sprite at all. Hence the guard on both the
+# binary and the file: a machine that has them gets the full greeting, and one
+# that does not gets the plain sprite instead of two errors. That is also what
+# makes the whole thing safe on a machine with no rice installed, where
+# ~/.config/fastfetch does not exist.
+#
+# -s is --shiny, and is deliberate in both branches.
 # ---------------------------------------------------------------------------
 
-shell::add_line '[ -t 1 ] && pokemon-colorscripts -r --no-title' "pokemon greeting"
+# A dependency of the greeting rather than of the program, which is why it is
+# installed here and not with git and python3 above.
+pkg::install fastfetch
+
+# shellcheck disable=SC2016  # $HOME must stay unexpanded in the rc file
+shell::add_block "pokemon" 'if [ -t 1 ]; then
+    if command -v fastfetch >/dev/null 2>&1 &&
+        [ -r "$HOME/.config/fastfetch/config-pokemon.jsonc" ]; then
+        pokemon-colorscripts --no-title -s -r |
+            fastfetch -c "$HOME/.config/fastfetch/config-pokemon.jsonc" \
+                --logo-type file-raw --logo-height 10 --logo-width 5 --logo -
+    else
+        pokemon-colorscripts --no-title -s -r
+    fi
+fi'
 
 log::success "Pokemon colorscripts ready"
