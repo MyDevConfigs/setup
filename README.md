@@ -62,6 +62,8 @@ latest release of a tool. `NO_COLOR` disables colored output.
 | `neovim`               | Neovim AppImage → `/opt/nvim`, plus `$EDITOR` and the `editor` alternative                       |
 | `tools`                | lazygit, starship (+ Gruvbox Rainbow), Task — all to `/usr/local/bin`                            |
 | `tmux`                 | tmux, **compiled** from the latest upstream release; removes the distro package                  |
+| `cargo`                | Rust crates from crates.io — grip-grab (`gg`), tree-sitter-cli                                   |
+| `pokemon`              | pokemon-colorscripts, fastfetch, and a sprite on every new shell                                 |
 | `ai`                   | Claude Code, GitHub Copilot CLI                                                                  |
 | `apps`                 | timeshift                                                                                        |
 | `gitconfig`            | git identity, default branch, pull strategy, commit editor, delta as pager                       |
@@ -175,6 +177,8 @@ modules/
   41-neovim.sh        Neovim AppImage -> /opt/nvim
   42-tools.sh         lazygit, starship, Task -> /usr/local/bin
   43-tmux.sh          tmux, compiled from source
+  44-cargo.sh         Rust crates from crates.io
+  45-pokemon.sh       pokemon-colorscripts, and the shell greeting
   46-ai.sh            Claude Code, GitHub Copilot CLI
   50-apps.sh          desktop applications
   60-gitconfig.sh     git global settings (prompts, runs last)
