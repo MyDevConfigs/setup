@@ -215,6 +215,20 @@ util::append_once() {
     fi
 
     util::ensure_dir "$(dirname -- "$file")"
+
+    # A hand-edited rc file does not necessarily end in a newline, and >>
+    # does not care: the appended line lands on the end of the last one,
+    # producing `alias lt='ls --tree'export PATH="..."`. Both lines are then
+    # broken, and grep -qxF never matches either of them again, so every
+    # subsequent run appends yet another copy.
+    #
+    # Command substitution strips trailing newlines, so this is empty exactly
+    # when the file already ends in one.
+    if [[ -s "$file" && -n "$(tail -c 1 -- "$file")" ]]; then
+        log::debug "${file/#$HOME/\~} has no trailing newline; adding one"
+        printf '\n' >>"$file"
+    fi
+
     printf '%s\n' "$line" >>"$file"
     log::debug "appended to ${file/#$HOME/\~}: $line"
 }
